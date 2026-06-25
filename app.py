@@ -29,6 +29,47 @@ logger = logging.getLogger(__name__)
 credential = DefaultAzureCredential()
 
 
+import time
+
+# Track resources that are transitioning (key: "type:rg:name", value: {"action": "starting"|"stopping", "since": timestamp})
+_transitioning = {}
+TRANSITION_TTL = 600  # Max 10 min to consider a resource as transitioning
+
+
+def mark_transitioning(res_type: str, rg: str, name: str, action: str):
+    key = f"{res_type}:{rg}:{name}".lower()
+    _transitioning[key] = {"action": action, "since": time.time()}
+
+
+def get_effective_status(res_type: str, rg: str, name: str, real_status: str) -> str:
+    """Override status if resource was recently triggered and real status hasn't changed yet."""
+    key = f"{res_type}:{rg}:{name}".lower()
+    if key not in _transitioning:
+        return real_status
+
+    info = _transitioning[key]
+    elapsed = time.time() - info["since"]
+
+    # TTL expired — remove from tracking
+    if elapsed > TRANSITION_TTL:
+        del _transitioning[key]
+        return real_status
+
+    expected_action = info["action"]  # "starting" or "stopping"
+
+    # Check if real status now matches the expected final state
+    s = real_status.lower()
+    if expected_action == "starting" and s in ("running", "started"):
+        del _transitioning[key]
+        return real_status
+    if expected_action == "stopping" and s in ("stopped", "deallocated"):
+        del _transitioning[key]
+        return real_status
+
+    # Still transitioning — return the transitioning status
+    return expected_action.capitalize()
+
+
 def get_sub_from_request() -> str:
     """Get subscription_id from query param ?sub=xxx"""
     sub = request.args.get("sub", "").strip()
@@ -123,7 +164,7 @@ def get_vms(sub_id: str) -> list[dict]:
                 "name": vm.name,
                 "resourceGroup": rg,
                 "location": vm.location,
-                "status": power_state,
+                "status": get_effective_status("vm", rg, vm.name, power_state),
                 "type": "VM",
             })
         return results
@@ -156,7 +197,7 @@ def get_aks_clusters(sub_id: str) -> list[dict]:
                 "name": cluster.name,
                 "resourceGroup": rg,
                 "location": cluster.location,
-                "status": power,
+                "status": get_effective_status("aks", rg, cluster.name, power),
                 "type": "AKS",
             })
         logger.info("AKS total found: %d", len(results))
@@ -180,7 +221,7 @@ def get_app_services(sub_id: str) -> list[dict]:
                 "name": site.name,
                 "resourceGroup": rg,
                 "location": site.location,
-                "status": site.state or "Unknown",
+                "status": get_effective_status("appservice", rg, site.name, site.state or "Unknown"),
                 "type": "AppService",
             })
         return results
@@ -197,6 +238,7 @@ def start_vm(resource_group, name):
         sub_id = get_sub_from_request()
         client = get_compute_client(sub_id)
         client.virtual_machines.begin_start(resource_group, name)
+        mark_transitioning("vm", resource_group, name, "starting")
         return jsonify({"success": True, "message": f"VM {name} starting..."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -208,6 +250,7 @@ def stop_vm(resource_group, name):
         sub_id = get_sub_from_request()
         client = get_compute_client(sub_id)
         client.virtual_machines.begin_deallocate(resource_group, name)
+        mark_transitioning("vm", resource_group, name, "stopping")
         return jsonify({"success": True, "message": f"VM {name} stopping..."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -219,6 +262,7 @@ def start_aks(resource_group, name):
         sub_id = get_sub_from_request()
         client = get_container_client(sub_id)
         client.managed_clusters.begin_start(resource_group, name)
+        mark_transitioning("aks", resource_group, name, "starting")
         return jsonify({"success": True, "message": f"AKS {name} starting... (takes 3-10 min)"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -230,6 +274,7 @@ def stop_aks(resource_group, name):
         sub_id = get_sub_from_request()
         client = get_container_client(sub_id)
         client.managed_clusters.begin_stop(resource_group, name)
+        mark_transitioning("aks", resource_group, name, "stopping")
         return jsonify({"success": True, "message": f"AKS {name} stopping... (takes 3-10 min)"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -274,6 +319,7 @@ def start_all():
     for vm in get_vms(sub_id):
         try:
             compute.virtual_machines.begin_start(vm["resourceGroup"], vm["name"])
+            mark_transitioning("vm", vm["resourceGroup"], vm["name"], "starting")
             results["vms"].append({"name": vm["name"], "success": True})
         except Exception as e:
             results["vms"].append({"name": vm["name"], "error": str(e)})
@@ -281,6 +327,7 @@ def start_all():
     for cluster in get_aks_clusters(sub_id):
         try:
             container.managed_clusters.begin_start(cluster["resourceGroup"], cluster["name"])
+            mark_transitioning("aks", cluster["resourceGroup"], cluster["name"], "starting")
             results["aks"].append({"name": cluster["name"], "success": True})
         except Exception as e:
             results["aks"].append({"name": cluster["name"], "error": str(e)})
@@ -288,6 +335,7 @@ def start_all():
     for svc in get_app_services(sub_id):
         try:
             web.web_apps.start(svc["resourceGroup"], svc["name"])
+            mark_transitioning("appservice", svc["resourceGroup"], svc["name"], "starting")
             results["appServices"].append({"name": svc["name"], "success": True})
         except Exception as e:
             results["appServices"].append({"name": svc["name"], "error": str(e)})
@@ -310,6 +358,7 @@ def stop_all():
     for vm in get_vms(sub_id):
         try:
             compute.virtual_machines.begin_deallocate(vm["resourceGroup"], vm["name"])
+            mark_transitioning("vm", vm["resourceGroup"], vm["name"], "stopping")
             results["vms"].append({"name": vm["name"], "success": True})
         except Exception as e:
             results["vms"].append({"name": vm["name"], "error": str(e)})
@@ -317,6 +366,7 @@ def stop_all():
     for cluster in get_aks_clusters(sub_id):
         try:
             container.managed_clusters.begin_stop(cluster["resourceGroup"], cluster["name"])
+            mark_transitioning("aks", cluster["resourceGroup"], cluster["name"], "stopping")
             results["aks"].append({"name": cluster["name"], "success": True})
         except Exception as e:
             results["aks"].append({"name": cluster["name"], "error": str(e)})
@@ -324,6 +374,7 @@ def stop_all():
     for svc in get_app_services(sub_id):
         try:
             web.web_apps.stop(svc["resourceGroup"], svc["name"])
+            mark_transitioning("appservice", svc["resourceGroup"], svc["name"], "stopping")
             results["appServices"].append({"name": svc["name"], "success": True})
         except Exception as e:
             results["appServices"].append({"name": svc["name"], "error": str(e)})
