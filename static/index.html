@@ -297,9 +297,10 @@
             font-size: 13px;
         }
         .btn-icon.start { color: var(--accent-green); }
-        .btn-icon.start:hover { background: var(--accent-green-glow); border-color: var(--accent-green); }
+        .btn-icon.start:hover:not(:disabled) { background: var(--accent-green-glow); border-color: var(--accent-green); }
         .btn-icon.stop { color: var(--accent-red); }
-        .btn-icon.stop:hover { background: var(--accent-red-glow); border-color: var(--accent-red); }
+        .btn-icon.stop:hover:not(:disabled) { background: var(--accent-red-glow); border-color: var(--accent-red); }
+        .btn-icon:disabled { opacity: 0.3; cursor: not-allowed; color: var(--text-muted); }
 
         /* ─── EMPTY STATE ─── */
         .empty-state {
@@ -438,10 +439,10 @@
             <div class="control-group" style="text-align:center; width:100%;">
                 <div class="control-label" style="margin-bottom:10px;">All Resources</div>
                 <div style="display:flex;gap:12px;justify-content:center;">
-                    <button class="btn btn-start" onclick="bulkAction('all', 'start')">
+                    <button class="btn btn-start" id="btnStartAll" onclick="bulkAction('all', 'start')">
                         <i class="fas fa-play"></i> Start All
                     </button>
-                    <button class="btn btn-stop" onclick="bulkAction('all', 'stop')">
+                    <button class="btn btn-stop" id="btnStopAll" onclick="bulkAction('all', 'stop')">
                         <i class="fas fa-stop"></i> Stop All
                     </button>
                 </div>
@@ -450,13 +451,13 @@
             <div class="control-group" style="text-align:center; width:100%;">
                 <div class="control-label" style="margin-bottom:12px;">Individual Resource</div>
                 <div style="display:flex; justify-content:center; margin-bottom:12px;">
-                    <select id="resourceDropdown" style="width:100%; max-width:700px;">
+                    <select id="resourceDropdown" style="width:100%; max-width:700px;" onchange="onResourceDropdownChange()">
                         <option value="">-- Select a Resource --</option>
                     </select>
                 </div>
                 <div style="display:flex;gap:12px;justify-content:center;">
-                    <button class="btn btn-start" onclick="individualAction('start')"><i class="fas fa-play"></i> Start</button>
-                    <button class="btn btn-stop" onclick="individualAction('stop')"><i class="fas fa-stop"></i> Stop</button>
+                    <button class="btn btn-start" id="btnIndStart" onclick="individualAction('start')"><i class="fas fa-play"></i> Start</button>
+                    <button class="btn btn-stop" id="btnIndStop" onclick="individualAction('stop')"><i class="fas fa-stop"></i> Stop</button>
                 </div>
             </div>
         </div>
@@ -637,10 +638,10 @@ function renderSection(containerId, resources, type) {
                 </span>
             </div>
             <div class="row-actions">
-                <button class="btn-icon start" title="Start" onclick="singleAction('${apiType}','${escapeAttr(r.resourceGroup)}','${escapeAttr(r.name)}','start')">
+                <button class="btn-icon start" title="Start" ${statusClass === "running" || statusClass === "transitioning" ? "disabled" : ""} onclick="singleAction('${apiType}','${escapeAttr(r.resourceGroup)}','${escapeAttr(r.name)}','start')">
                     <i class="fas fa-play"></i>
                 </button>
-                <button class="btn-icon stop" title="Stop" onclick="singleAction('${apiType}','${escapeAttr(r.resourceGroup)}','${escapeAttr(r.name)}','stop')">
+                <button class="btn-icon stop" title="Stop" ${statusClass === "stopped" || statusClass === "transitioning" ? "disabled" : ""} onclick="singleAction('${apiType}','${escapeAttr(r.resourceGroup)}','${escapeAttr(r.name)}','stop')">
                     <i class="fas fa-stop"></i>
                 </button>
             </div>
@@ -652,7 +653,7 @@ function getStatusClass(status) {
     const s = (status || "").toLowerCase();
     if (s === "running" || s === "started") return "running";
     if (s === "deallocated" || s === "stopped") return "stopped";
-    if (s.includes("starting") || s.includes("stopping") || s.includes("creating") || s.includes("updating")) return "transitioning";
+    if (s.includes("starting") || s.includes("stopping") || s.includes("deallocating") || s.includes("creating") || s.includes("updating")) return "transitioning";
     return "unknown";
 }
 
@@ -664,6 +665,47 @@ function updateStats() {
     document.getElementById("totalCount").textContent = total;
     document.getElementById("runningCount").textContent = running;
     document.getElementById("stoppedCount").textContent = stopped;
+    updateButtonStates();
+}
+
+// ─── BUTTON STATE MANAGEMENT ─────────────────────────────
+function updateButtonStates() {
+    const allRunning = allResources.length > 0 && allResources.every(r => getStatusClass(r.status) === "running");
+    const allStopped = allResources.length > 0 && allResources.every(r => getStatusClass(r.status) === "stopped");
+
+    document.getElementById("btnStartAll").disabled = allRunning;
+    document.getElementById("btnStopAll").disabled = allStopped;
+
+    // Update individual buttons
+    onResourceDropdownChange();
+}
+
+function onResourceDropdownChange() {
+    const dd = document.getElementById("resourceDropdown");
+    const btnStart = document.getElementById("btnIndStart");
+    const btnStop = document.getElementById("btnIndStop");
+
+    if (!dd.value) {
+        btnStart.disabled = true;
+        btnStop.disabled = true;
+        return;
+    }
+
+    const [type, rg, name] = dd.value.split("|");
+    const resource = allResources.find(r => {
+        const tl = r.type === "AppService" ? "appservice" : r.type.toLowerCase();
+        return tl === type && r.resourceGroup === rg && r.name === name;
+    });
+
+    if (!resource) {
+        btnStart.disabled = false;
+        btnStop.disabled = false;
+        return;
+    }
+
+    const sc = getStatusClass(resource.status);
+    btnStart.disabled = (sc === "running" || sc === "transitioning");
+    btnStop.disabled = (sc === "stopped" || sc === "transitioning");
 }
 
 // ─── DROPDOWN ────────────────────────────────────────────
