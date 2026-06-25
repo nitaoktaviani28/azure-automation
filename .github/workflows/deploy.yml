@@ -39,7 +39,7 @@ jobs:
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
+          password: ${{ secrets.VM_PASSWORD }}
           script: |
             docker pull ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
             docker stop azure-resource-manager || true
