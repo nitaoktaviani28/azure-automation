@@ -191,8 +191,8 @@ def start_vm(resource_group, name):
     try:
         sub_id = get_sub_from_request()
         client = get_compute_client(sub_id)
-        client.virtual_machines.begin_start(resource_group, name).result()
-        return jsonify({"success": True, "message": f"VM {name} started"})
+        client.virtual_machines.begin_start(resource_group, name)
+        return jsonify({"success": True, "message": f"VM {name} starting..."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -202,8 +202,8 @@ def stop_vm(resource_group, name):
     try:
         sub_id = get_sub_from_request()
         client = get_compute_client(sub_id)
-        client.virtual_machines.begin_deallocate(resource_group, name).result()
-        return jsonify({"success": True, "message": f"VM {name} deallocated"})
+        client.virtual_machines.begin_deallocate(resource_group, name)
+        return jsonify({"success": True, "message": f"VM {name} stopping..."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -213,8 +213,8 @@ def start_aks(resource_group, name):
     try:
         sub_id = get_sub_from_request()
         client = get_container_client(sub_id)
-        client.managed_clusters.begin_start(resource_group, name).result()
-        return jsonify({"success": True, "message": f"AKS {name} started"})
+        client.managed_clusters.begin_start(resource_group, name)
+        return jsonify({"success": True, "message": f"AKS {name} starting... (takes 3-10 min)"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -224,8 +224,8 @@ def stop_aks(resource_group, name):
     try:
         sub_id = get_sub_from_request()
         client = get_container_client(sub_id)
-        client.managed_clusters.begin_stop(resource_group, name).result()
-        return jsonify({"success": True, "message": f"AKS {name} stopped"})
+        client.managed_clusters.begin_stop(resource_group, name)
+        return jsonify({"success": True, "message": f"AKS {name} stopping... (takes 3-10 min)"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -268,14 +268,14 @@ def start_all():
 
     for vm in get_vms(sub_id):
         try:
-            compute.virtual_machines.begin_start(vm["resourceGroup"], vm["name"]).result()
+            compute.virtual_machines.begin_start(vm["resourceGroup"], vm["name"])
             results["vms"].append({"name": vm["name"], "success": True})
         except Exception as e:
             results["vms"].append({"name": vm["name"], "error": str(e)})
 
     for cluster in get_aks_clusters(sub_id):
         try:
-            container.managed_clusters.begin_start(cluster["resourceGroup"], cluster["name"]).result()
+            container.managed_clusters.begin_start(cluster["resourceGroup"], cluster["name"])
             results["aks"].append({"name": cluster["name"], "success": True})
         except Exception as e:
             results["aks"].append({"name": cluster["name"], "error": str(e)})
@@ -304,14 +304,14 @@ def stop_all():
 
     for vm in get_vms(sub_id):
         try:
-            compute.virtual_machines.begin_deallocate(vm["resourceGroup"], vm["name"]).result()
+            compute.virtual_machines.begin_deallocate(vm["resourceGroup"], vm["name"])
             results["vms"].append({"name": vm["name"], "success": True})
         except Exception as e:
             results["vms"].append({"name": vm["name"], "error": str(e)})
 
     for cluster in get_aks_clusters(sub_id):
         try:
-            container.managed_clusters.begin_stop(cluster["resourceGroup"], cluster["name"]).result()
+            container.managed_clusters.begin_stop(cluster["resourceGroup"], cluster["name"])
             results["aks"].append({"name": cluster["name"], "success": True})
         except Exception as e:
             results["aks"].append({"name": cluster["name"], "error": str(e)})
@@ -357,9 +357,9 @@ def _bulk_action(resource_type: str, action: str):
         for res in get_vms(sub_id):
             try:
                 if action == "start":
-                    client.virtual_machines.begin_start(res["resourceGroup"], res["name"]).result()
+                    client.virtual_machines.begin_start(res["resourceGroup"], res["name"])
                 else:
-                    client.virtual_machines.begin_deallocate(res["resourceGroup"], res["name"]).result()
+                    client.virtual_machines.begin_deallocate(res["resourceGroup"], res["name"])
                 results.append({"name": res["name"], "success": True})
             except Exception as e:
                 results.append({"name": res["name"], "error": str(e)})
@@ -369,9 +369,9 @@ def _bulk_action(resource_type: str, action: str):
         for res in get_aks_clusters(sub_id):
             try:
                 if action == "start":
-                    client.managed_clusters.begin_start(res["resourceGroup"], res["name"]).result()
+                    client.managed_clusters.begin_start(res["resourceGroup"], res["name"])
                 else:
-                    client.managed_clusters.begin_stop(res["resourceGroup"], res["name"]).result()
+                    client.managed_clusters.begin_stop(res["resourceGroup"], res["name"])
                 results.append({"name": res["name"], "success": True})
             except Exception as e:
                 results.append({"name": res["name"], "error": str(e)})
