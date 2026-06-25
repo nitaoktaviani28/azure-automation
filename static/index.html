@@ -266,6 +266,11 @@
             color: var(--text-muted);
             border: 1px solid rgba(100, 116, 139, 0.3);
         }
+        .status-badge.transitioning {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--accent-yellow);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
         .status-dot {
             width: 7px; height: 7px;
             border-radius: 50%;
@@ -274,6 +279,11 @@
         .status-dot.running { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
         .status-dot.stopped { background: var(--accent-red); }
         .status-dot.unknown { background: var(--text-muted); }
+        .status-dot.transitioning {
+            background: var(--accent-yellow);
+            animation: pulse 1s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
         .row-actions { display: flex; gap: 6px; }
         .btn-icon {
@@ -639,6 +649,7 @@ function getStatusClass(status) {
     const s = (status || "").toLowerCase();
     if (s.includes("running") || s === "running" || s === "started") return "running";
     if (s.includes("deallocat") || s.includes("stop") || s === "stopped") return "stopped";
+    if (s.includes("starting") || s.includes("stopping")) return "transitioning";
     return "unknown";
 }
 
@@ -666,28 +677,67 @@ function populateDropdown() {
 }
 
 // ─── ACTIONS ─────────────────────────────────────────────
+let pollInterval = null;
+
+function startPolling() {
+    stopPolling();
+    pollInterval = setInterval(async () => {
+        await loadResourcesSilent();
+        // Stop polling if no resources are transitioning
+        const hasTransitioning = allResources.some(r => getStatusClass(r.status) === "transitioning");
+        if (!hasTransitioning) {
+            stopPolling();
+            showToast("All operations completed", "success");
+        }
+    }, 15000);
+}
+
+function stopPolling() {
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+}
+
+async function loadResourcesSilent() {
+    if (!currentSubId) return;
+    try {
+        const res = await fetch(`${API}/api/resources?${subParam()}`);
+        const data = await res.json();
+        if (data.error) return;
+        allResources = [...(data.vms || []), ...(data.aks || []), ...(data.appServices || [])];
+        renderSection("vmList", data.vms || [], "vm");
+        renderSection("aksList", data.aks || [], "aks");
+        renderSection("appList", data.appServices || [], "appservice");
+        document.getElementById("vmCount").textContent = (data.vms || []).length;
+        document.getElementById("aksCount").textContent = (data.aks || []).length;
+        document.getElementById("appCount").textContent = (data.appServices || []).length;
+        updateStats();
+        populateDropdown();
+        document.getElementById("lastUpdated").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+    } catch (err) { /* silent */ }
+}
+
 async function singleAction(type, rg, name, action) {
     if (!currentSubId) { showToast("Please select a subscription first", "info"); return; }
-    showLoading(`${action === "start" ? "Starting" : "Stopping"} ${name}...`);
+    showLoading(`Sending ${action} command to ${name}...`);
     try {
         const res = await fetch(`${API}/api/${type}/${encodeURIComponent(rg)}/${encodeURIComponent(name)}/${action}?${subParam()}`, { method: "POST" });
         const data = await res.json();
         if (data.error) {
             showToast(`Error: ${data.error}`, "error");
         } else {
-            showToast(`${name} ${action === "start" ? "started" : "stopped"} successfully`, "success");
+            showToast(`${name}: ${action} command sent. Waiting for status update...`, "info");
+            startPolling();
         }
-        await loadResources();
     } catch (err) {
         showToast("Action failed: " + err.message, "error");
-        hideLoading();
     }
+    hideLoading();
+    await loadResourcesSilent();
 }
 
 async function bulkAction(scope, action) {
     if (!currentSubId) { showToast("Please select a subscription first", "info"); return; }
     const label = action === "start" ? "Starting" : "Stopping";
-    showLoading(`${label} ${scope === "all" ? "all resources" : scope + " resources"}...`);
+    showLoading(`Sending ${action} command to ${scope === "all" ? "all resources" : scope}...`);
     try {
         let url;
         if (scope === "all") {
@@ -697,12 +747,13 @@ async function bulkAction(scope, action) {
         }
         const res = await fetch(url, { method: "POST" });
         const data = await res.json();
-        showToast(`Bulk ${action} completed for ${scope}`, "success");
-        await loadResources();
+        showToast(`${action} command sent to ${scope}. Polling for status...`, "info");
+        startPolling();
     } catch (err) {
         showToast("Bulk action failed: " + err.message, "error");
-        hideLoading();
     }
+    hideLoading();
+    await loadResourcesSilent();
 }
 
 function individualAction(action) {
