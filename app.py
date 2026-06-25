@@ -119,8 +119,8 @@ def get_vms(sub_id: str) -> list[dict]:
                     raw = status.code.replace("PowerState/", "").lower()
                     # Map to match Azure Portal display
                     state_map = {
-                        "deallocated": "Deallocated",
-                        "deallocating": "Deallocating",
+                        "deallocated": "Stopped",
+                        "deallocating": "Stopping",
                         "running": "Running",
                         "starting": "Starting",
                         "stopped": "Stopped",
