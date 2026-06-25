@@ -89,6 +89,7 @@ def list_all_resources():
     vms = get_vms(sub_id)
     aks = get_aks_clusters(sub_id)
     apps = get_app_services(sub_id)
+    logger.info("Loaded: %d VMs, %d AKS, %d Apps for sub %s", len(vms), len(aks), len(apps), sub_id)
     return jsonify({"vms": vms, "aks": aks, "appServices": apps})
 
 
@@ -97,7 +98,10 @@ def get_vms(sub_id: str) -> list[dict]:
         client = get_compute_client(sub_id)
         results = []
         for vm in client.virtual_machines.list_all():
-            rg = vm.id.split("/resourceGroups/")[1].split("/")[0]
+            try:
+                rg = vm.id.split("/resourceGroups/")[1].split("/")[0]
+            except (IndexError, AttributeError):
+                continue
             iv = client.virtual_machines.instance_view(rg, vm.name)
             power_state = "Unknown"
             for status in (iv.statuses or []):
@@ -123,9 +127,13 @@ def get_aks_clusters(sub_id: str) -> list[dict]:
         client = get_container_client(sub_id)
         results = []
         for cluster in client.managed_clusters.list():
-            rg = cluster.id.split("/resourceGroups/")[1].split("/")[0]
+            try:
+                rg = cluster.id.split("/resourceGroups/")[1].split("/")[0]
+            except (IndexError, AttributeError):
+                logger.warning("Skipping AKS with invalid ID: %s", cluster.id)
+                continue
             power = "Unknown"
-            if cluster.power_state:
+            if hasattr(cluster, 'power_state') and cluster.power_state:
                 power = cluster.power_state.code or "Unknown"
             results.append({
                 "id": cluster.id,
@@ -137,7 +145,7 @@ def get_aks_clusters(sub_id: str) -> list[dict]:
             })
         return results
     except Exception as e:
-        logger.error("Failed to list AKS: %s", e)
+        logger.error("Failed to list AKS: %s", e, exc_info=True)
         return []
 
 
@@ -146,7 +154,10 @@ def get_app_services(sub_id: str) -> list[dict]:
         client = get_web_client(sub_id)
         results = []
         for site in client.web_apps.list():
-            rg = site.id.split("/resourceGroups/")[1].split("/")[0]
+            try:
+                rg = site.id.split("/resourceGroups/")[1].split("/")[0]
+            except (IndexError, AttributeError):
+                continue
             results.append({
                 "id": site.id,
                 "name": site.name,
