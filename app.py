@@ -143,9 +143,14 @@ def get_aks_clusters(sub_id: str) -> list[dict]:
             except (ValueError, AttributeError):
                 logger.warning("Skipping AKS with invalid ID: %s", cluster.id)
                 continue
-            power = "Unknown"
-            if hasattr(cluster, 'power_state') and cluster.power_state:
-                power = cluster.power_state.code or "Unknown"
+            # Get fresh status per cluster
+            try:
+                detail = client.managed_clusters.get(rg, cluster.name)
+                power = "Unknown"
+                if hasattr(detail, 'power_state') and detail.power_state:
+                    power = detail.power_state.code or "Unknown"
+            except Exception:
+                power = "Unknown"
             results.append({
                 "id": cluster.id,
                 "name": cluster.name,
