@@ -49,6 +49,16 @@ def get_web_client(sub_id: str) -> WebSiteManagementClient:
     return WebSiteManagementClient(credential, sub_id)
 
 
+import re
+
+def extract_resource_group(resource_id: str) -> str:
+    """Extract resource group from Azure resource ID (case-insensitive)."""
+    match = re.search(r"/resourceGroups/([^/]+)", resource_id, re.IGNORECASE)
+    if not match:
+        raise ValueError(f"Cannot extract RG from: {resource_id}")
+    return match.group(1)
+
+
 # ─── LIST SUBSCRIPTIONS ─────────────────────────────────────────
 
 # Only show these subscriptions in the dashboard
@@ -99,8 +109,8 @@ def get_vms(sub_id: str) -> list[dict]:
         results = []
         for vm in client.virtual_machines.list_all():
             try:
-                rg = vm.id.split("/resourceGroups/")[1].split("/")[0]
-            except (IndexError, AttributeError):
+                rg = extract_resource_group(vm.id)
+            except (ValueError, AttributeError):
                 continue
             iv = client.virtual_machines.instance_view(rg, vm.name)
             power_state = "Unknown"
@@ -127,9 +137,10 @@ def get_aks_clusters(sub_id: str) -> list[dict]:
         client = get_container_client(sub_id)
         results = []
         for cluster in client.managed_clusters.list():
+            logger.info("Found AKS: name=%s, id=%s", cluster.name, cluster.id)
             try:
-                rg = cluster.id.split("/resourceGroups/")[1].split("/")[0]
-            except (IndexError, AttributeError):
+                rg = extract_resource_group(cluster.id)
+            except (ValueError, AttributeError):
                 logger.warning("Skipping AKS with invalid ID: %s", cluster.id)
                 continue
             power = "Unknown"
@@ -143,6 +154,7 @@ def get_aks_clusters(sub_id: str) -> list[dict]:
                 "status": power,
                 "type": "AKS",
             })
+        logger.info("AKS total found: %d", len(results))
         return results
     except Exception as e:
         logger.error("Failed to list AKS: %s", e, exc_info=True)
@@ -155,8 +167,8 @@ def get_app_services(sub_id: str) -> list[dict]:
         results = []
         for site in client.web_apps.list():
             try:
-                rg = site.id.split("/resourceGroups/")[1].split("/")[0]
-            except (IndexError, AttributeError):
+                rg = extract_resource_group(site.id)
+            except (ValueError, AttributeError):
                 continue
             results.append({
                 "id": site.id,
