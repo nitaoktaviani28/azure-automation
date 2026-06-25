@@ -650,9 +650,9 @@ function renderSection(containerId, resources, type) {
 
 function getStatusClass(status) {
     const s = (status || "").toLowerCase();
-    if (s.includes("running") || s === "running" || s === "started") return "running";
-    if (s.includes("deallocat") || s.includes("stop") || s === "stopped") return "stopped";
-    if (s.includes("starting") || s.includes("stopping")) return "transitioning";
+    if (s === "running" || s === "started") return "running";
+    if (s === "deallocated" || s === "stopped") return "stopped";
+    if (s.includes("starting") || s.includes("stopping") || s.includes("creating") || s.includes("updating")) return "transitioning";
     return "unknown";
 }
 
@@ -681,7 +681,7 @@ function populateDropdown() {
 
 // ─── ACTIONS ─────────────────────────────────────────────
 let pollInterval = null;
-const POLL_FAST = 10000;   // 10s saat ada transitioning
+const POLL_FAST = 5000;    // 5s saat ada action baru
 const POLL_NORMAL = 30000; // 30s saat semua idle
 
 function startPolling(interval = POLL_NORMAL) {
