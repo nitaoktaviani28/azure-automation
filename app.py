@@ -52,17 +52,25 @@ def get_web_client(sub_id: str) -> WebSiteManagementClient:
 # ─── LIST SUBSCRIPTIONS ─────────────────────────────────────────
 
 @app.route("/api/subscriptions", methods=["GET"])
+# Only show these subscriptions in the dashboard
+ALLOWED_SUBSCRIPTIONS = {
+    "163c1284-7060-4c7f-822f-efc086bbf95e",  # VS Enterprise 2025 – Nita Oktaviani
+    "c943efc2-430f-4c7c-a428-293d6fb2c352",  # Visual Studio Enterprise – Ian Paulus Sinambela MPN
+}
+
+
 def list_subscriptions():
-    """List all accessible subscriptions."""
+    """List allowed subscriptions."""
     try:
         sub_client = SubscriptionClient(credential)
         subs = []
         for sub in sub_client.subscriptions.list():
-            subs.append({
-                "id": sub.subscription_id,
-                "name": sub.display_name,
-                "state": sub.state.value if sub.state else "Unknown",
-            })
+            if sub.subscription_id in ALLOWED_SUBSCRIPTIONS:
+                subs.append({
+                    "id": sub.subscription_id,
+                    "name": sub.display_name,
+                    "state": sub.state.value if sub.state else "Unknown",
+                })
         return jsonify(subs)
     except Exception as e:
         logger.error("Failed to list subscriptions: %s", e)
