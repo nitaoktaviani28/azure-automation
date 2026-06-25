@@ -51,7 +51,6 @@ def get_web_client(sub_id: str) -> WebSiteManagementClient:
 
 # ─── LIST SUBSCRIPTIONS ─────────────────────────────────────────
 
-@app.route("/api/subscriptions", methods=["GET"])
 # Only show these subscriptions in the dashboard
 ALLOWED_SUBSCRIPTIONS = {
     "163c1284-7060-4c7f-822f-efc086bbf95e",  # VS Enterprise 2025 – Nita Oktaviani
@@ -59,6 +58,7 @@ ALLOWED_SUBSCRIPTIONS = {
 }
 
 
+@app.route("/api/subscriptions", methods=["GET"])
 def list_subscriptions():
     """List allowed subscriptions."""
     try:
