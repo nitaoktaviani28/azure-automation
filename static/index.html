@@ -606,6 +606,9 @@ async function loadResources() {
         populateDropdown();
         document.getElementById("lastUpdated").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
         showToast("Resources loaded successfully", "success");
+        // Start auto-polling
+        const hasTransitioning = allResources.some(r => getStatusClass(r.status) === "transitioning");
+        startPolling(hasTransitioning ? POLL_FAST : POLL_NORMAL);
     } catch (err) {
         showToast("Failed to load resources: " + err.message, "error");
     }
@@ -678,18 +681,27 @@ function populateDropdown() {
 
 // ─── ACTIONS ─────────────────────────────────────────────
 let pollInterval = null;
+const POLL_FAST = 10000;   // 10s saat ada transitioning
+const POLL_NORMAL = 30000; // 30s saat semua idle
 
-function startPolling() {
+function startPolling(interval = POLL_NORMAL) {
     stopPolling();
     pollInterval = setInterval(async () => {
         await loadResourcesSilent();
-        // Stop polling if no resources are transitioning
         const hasTransitioning = allResources.some(r => getStatusClass(r.status) === "transitioning");
-        if (!hasTransitioning) {
-            stopPolling();
-            showToast("All operations completed", "success");
+        if (hasTransitioning) {
+            // Switch to fast polling
+            if (pollInterval._interval !== POLL_FAST) {
+                startPolling(POLL_FAST);
+            }
+        } else {
+            // Switch to normal polling
+            if (pollInterval._interval !== POLL_NORMAL) {
+                startPolling(POLL_NORMAL);
+            }
         }
-    }, 15000);
+    }, interval);
+    pollInterval._interval = interval;
 }
 
 function stopPolling() {
@@ -724,8 +736,8 @@ async function singleAction(type, rg, name, action) {
         if (data.error) {
             showToast(`Error: ${data.error}`, "error");
         } else {
-            showToast(`${name}: ${action} command sent. Waiting for status update...`, "info");
-            startPolling();
+            showToast(`${name}: ${action} command sent. Status will update automatically.`, "info");
+            startPolling(POLL_FAST);
         }
     } catch (err) {
         showToast("Action failed: " + err.message, "error");
@@ -736,7 +748,6 @@ async function singleAction(type, rg, name, action) {
 
 async function bulkAction(scope, action) {
     if (!currentSubId) { showToast("Please select a subscription first", "info"); return; }
-    const label = action === "start" ? "Starting" : "Stopping";
     showLoading(`Sending ${action} command to ${scope === "all" ? "all resources" : scope}...`);
     try {
         let url;
@@ -747,8 +758,8 @@ async function bulkAction(scope, action) {
         }
         const res = await fetch(url, { method: "POST" });
         const data = await res.json();
-        showToast(`${action} command sent to ${scope}. Polling for status...`, "info");
-        startPolling();
+        showToast(`${action} command sent to ${scope}. Status will update automatically.`, "info");
+        startPolling(POLL_FAST);
     } catch (err) {
         showToast("Bulk action failed: " + err.message, "error");
     }
