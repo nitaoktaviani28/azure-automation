@@ -50,3 +50,4 @@ jobs:
               -p 80:5000 \
               ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
             docker image prune -f
+

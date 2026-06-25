@@ -13,7 +13,11 @@ from azure.identity import DefaultAzureCredential
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.containerservice import ContainerServiceClient
 from azure.mgmt.web import WebSiteManagementClient
-from azure.mgmt.resource import SubscriptionClient
+
+try:
+    from azure.mgmt.resource import SubscriptionClient
+except ImportError:
+    from azure.mgmt.resource.subscriptions import SubscriptionClient
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
