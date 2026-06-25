@@ -116,7 +116,17 @@ def get_vms(sub_id: str) -> list[dict]:
             power_state = "Unknown"
             for status in (iv.statuses or []):
                 if status.code and status.code.startswith("PowerState/"):
-                    power_state = status.code.replace("PowerState/", "")
+                    raw = status.code.replace("PowerState/", "").lower()
+                    # Map to match Azure Portal display
+                    state_map = {
+                        "deallocated": "Deallocated",
+                        "deallocating": "Deallocating",
+                        "running": "Running",
+                        "starting": "Starting",
+                        "stopped": "Stopped",
+                        "stopping": "Stopping",
+                    }
+                    power_state = state_map.get(raw, raw.capitalize())
                     break
             results.append({
                 "id": vm.id,
