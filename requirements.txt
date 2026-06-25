@@ -1,0 +1,7 @@
+flask
+flask-cors
+azure-identity
+azure-mgmt-compute
+azure-mgmt-containerservice
+azure-mgmt-web
+azure-mgmt-resource

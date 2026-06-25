@@ -1,0 +1,15 @@
+services:
+  azure-manager:
+    build: .
+    container_name: azure-resource-manager
+    ports:
+      - "80:5000"
+    environment:
+      # Opsional: set manual jika tidak pakai Managed Identity
+      # - AZURE_SUBSCRIPTION_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      # - AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      # - AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      # - AZURE_CLIENT_SECRET=your-secret
+      - IDENTITY_ENDPOINT=${IDENTITY_ENDPOINT:-}
+      - IDENTITY_HEADER=${IDENTITY_HEADER:-}
+    restart: unless-stopped
