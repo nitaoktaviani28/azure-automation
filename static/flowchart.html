@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Resource Manager - Architecture & Flowchart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #ffffff;
+            color: #1a1a2e;
+            padding: 48px;
+        }
+        .page { max-width: 1200px; margin: 0 auto; }
+
+        h1 { text-align: center; font-size: 24px; font-weight: 700; margin-bottom: 4px; color: #1a1a2e; }
+        .subtitle { text-align: center; color: #6b7280; font-size: 13px; margin-bottom: 56px; }
+        h2 {
+            font-size: 16px; font-weight: 600; margin-bottom: 28px;
+            padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; color: #374151;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .flow-section { margin-bottom: 64px; }
+
+        /* ─── ARCHITECTURE ─── */
+        .arch-container {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0; flex-wrap: wrap;
+        }
+        .arch-box {
+            background: #ffffff;
+            border: 2px solid #d1d5db;
+            border-radius: 10px;
+            padding: 20px 24px;
+            text-align: center;
+            min-width: 140px;
+            max-width: 160px;
+        }
+        .arch-box .icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 10px; font-size: 18px;
+        }
+        .arch-box .title { font-size: 12px; font-weight: 700; margin-bottom: 4px; color: #1f2937; }
+        .arch-box .desc { font-size: 10px; color: #6b7280; line-height: 1.5; }
+
+        .arch-box.user { border-color: #8b5cf6; }
+        .arch-box.user .icon { background: #f3f0ff; color: #8b5cf6; }
+        .arch-box.frontend { border-color: #3b82f6; }
+        .arch-box.frontend .icon { background: #eff6ff; color: #3b82f6; }
+        .arch-box.backend { border-color: #10b981; }
+        .arch-box.backend .icon { background: #ecfdf5; color: #10b981; }
+        .arch-box.identity { border-color: #f59e0b; }
+        .arch-box.identity .icon { background: #fffbeb; color: #f59e0b; }
+        .arch-box.azure { border-color: #0078d4; }
+        .arch-box.azure .icon { background: #e8f4fd; color: #0078d4; }
+
+        .arch-arrow {
+            display: flex; flex-direction: column; align-items: center; padding: 0 4px;
+        }
+        .arch-arrow .line {
+            width: 48px; height: 2px; background: #9ca3af; position: relative;
+        }
+        .arch-arrow .line::after {
+            content: ''; position: absolute; right: -5px; top: -3px;
+            border: 4px solid transparent; border-left: 5px solid #9ca3af;
+        }
+        .arch-arrow .label { font-size: 9px; color: #9ca3af; margin-top: 4px; white-space: nowrap; font-weight: 500; }
+
+        /* ─── FLOW NODES ─── */
+        .flow-container {
+            display: flex; flex-direction: column; align-items: center; gap: 0;
+        }
+        .flow-node {
+            background: #ffffff; border: 2px solid #d1d5db; border-radius: 8px;
+            padding: 14px 28px; text-align: center; min-width: 320px; max-width: 420px;
+        }
+        .flow-node .node-num {
+            display: inline-block; width: 22px; height: 22px; border-radius: 50%;
+            font-size: 11px; font-weight: 700; line-height: 22px; text-align: center;
+            margin-right: 8px;
+        }
+        .flow-node .node-title { font-size: 13px; font-weight: 600; color: #1f2937; }
+        .flow-node .node-desc { font-size: 11px; color: #6b7280; margin-top: 3px; }
+
+        .flow-node.start { border-color: #8b5cf6; border-radius: 24px; }
+        .flow-node.start .node-num { background: #8b5cf6; color: #fff; }
+        .flow-node.action { border-color: #3b82f6; }
+        .flow-node.action .node-num { background: #3b82f6; color: #fff; }
+        .flow-node.process { border-color: #10b981; }
+        .flow-node.process .node-num { background: #10b981; color: #fff; }
+        .flow-node.decision { border-color: #f59e0b; }
+        .flow-node.decision .node-num { background: #f59e0b; color: #fff; }
+        .flow-node.end { border-color: #ef4444; }
+        .flow-node.end .node-num { background: #ef4444; color: #fff; }
+        .flow-node.success { border-color: #10b981; border-radius: 24px; }
+        .flow-node.success .node-num { background: #10b981; color: #fff; }
+
+        .flow-arrow {
+            display: flex; flex-direction: column; align-items: center; padding: 2px 0;
+        }
+        .flow-arrow .vline {
+            width: 2px; height: 24px; background: #9ca3af;
+        }
+        .flow-arrow .vline::after {
+            content: ''; display: block; width: 0; height: 0;
+            border-left: 4px solid transparent; border-right: 4px solid transparent;
+            border-top: 5px solid #9ca3af; margin-left: -3px;
+        }
+
+        /* ─── BRANCH ─── */
+        .flow-branch { display: flex; gap: 20px; justify-content: center; }
+        .flow-branch-col { display: flex; flex-direction: column; align-items: center; }
+        .branch-label {
+            font-size: 10px; color: #6b7280; font-weight: 700; margin-bottom: 8px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        /* ─── DEPLOY ─── */
+        .deploy-flow {
+            display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; margin-top: 20px;
+        }
+        .deploy-box {
+            background: #fff; border: 2px solid #d1d5db; border-radius: 8px;
+            padding: 16px 20px; text-align: center; min-width: 130px;
+        }
+        .deploy-box .step {
+            width: 26px; height: 26px; background: #eff6ff; border: 2px solid #3b82f6;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 8px; font-size: 11px; font-weight: 700; color: #3b82f6;
+        }
+        .deploy-box .title { font-size: 12px; font-weight: 600; color: #1f2937; }
+        .deploy-box .desc { font-size: 10px; color: #6b7280; margin-top: 2px; }
+        .deploy-box.done { border-color: #10b981; }
+        .deploy-box.done .step { background: #ecfdf5; border-color: #10b981; color: #10b981; }
+        .deploy-arrow { padding: 0 4px; color: #9ca3af; font-size: 16px; }
+
+        /* ─── TECH STACK ─── */
+        .tech-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px; }
+        .tech-card {
+            background: #fff; border: 2px solid #e5e7eb; border-radius: 10px;
+            padding: 20px; text-align: center;
+        }
+        .tech-card .tech-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 10px; font-size: 18px;
+        }
+        .tech-card .tech-name { font-size: 13px; font-weight: 600; color: #1f2937; }
+        .tech-card .tech-desc { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+        .footer {
+            text-align: center; color: #9ca3af; font-size: 11px;
+            margin-top: 48px; padding-top: 20px; border-top: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <h1>Azure Resource Manager Dashboard</h1>
+    <p class="subtitle">Architecture &amp; Flow Documentation</p>
+
+    <!-- ─── ARCHITECTURE ─── -->
+    <div class="flow-section">
+        <h2>System Architecture</h2>
+        <div class="arch-container">
+            <div class="arch-box user">
+                <div class="icon"><i class="fas fa-user"></i></div>
+                <div class="title">User</div>
+                <div class="desc">Web Browser</div>
+            </div>
+            <div class="arch-arrow"><div class="line"></div><div class="label">HTTP :80</div></div>
+            <div class="arch-box frontend">
+                <div class="icon"><i class="fas fa-desktop"></i></div>
+                <div class="title">Frontend</div>
+                <div class="desc">HTML / CSS / JS</div>
+            </div>
+            <div class="arch-arrow"><div class="line"></div><div class="label">REST API</div></div>
+            <div class="arch-box backend">
+                <div class="icon"><i class="fas fa-server"></i></div>
+                <div class="title">Backend</div>
+                <div class="desc">Flask + Gunicorn<br>Docker Container</div>
+            </div>
+            <div class="arch-arrow"><div class="line"></div><div class="label">Azure SDK</div></div>
+            <div class="arch-box identity">
+                <div class="icon"><i class="fas fa-key"></i></div>
+                <div class="title">Managed Identity</div>
+                <div class="desc">System-Assigned<br>RBAC Contributor</div>
+            </div>
+            <div class="arch-arrow"><div class="line"></div><div class="label">ARM API</div></div>
+            <div class="arch-box azure">
+                <div class="icon"><i class="fas fa-cloud"></i></div>
+                <div class="title">Azure Resources</div>
+                <div class="desc">VM / AKS / App Service</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── USER FLOW ─── -->
+    <div class="flow-section">
+        <h2>User Flow Start / Stop Resource</h2>
+        <div class="flow-container">
+            <div class="flow-node start">
+                <span class="node-num">1</span>
+                <span class="node-title">User Membuka Dashboard</span>
+                <div class="node-desc">Akses melalui browser</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node action">
+                <span class="node-num">2</span>
+                <span class="node-title">Pilih Subscription</span>
+                <div class="node-desc">Dropdown list subscription yang tersedia</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node process">
+                <span class="node-num">3</span>
+                <span class="node-title">Load Resources &amp; Status</span>
+                <div class="node-desc">GET /api/resources Menampilkan VM, AKS, App Service beserta status real-time</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node decision">
+                <span class="node-num">4</span>
+                <span class="node-title">User Memilih Aksi</span>
+                <div class="node-desc">Start All / Stop All / Individual Resource</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-branch">
+                <div class="flow-branch-col">
+                    <div class="branch-label">Start All</div>
+                    <div class="flow-node action" style="min-width:180px;">
+                        <div class="node-title" style="font-size:12px;">POST /api/all/start</div>
+                    </div>
+                </div>
+                <div class="flow-branch-col">
+                    <div class="branch-label">Stop All</div>
+                    <div class="flow-node end" style="min-width:180px;">
+                        <div class="node-title" style="font-size:12px;">POST /api/all/stop</div>
+                    </div>
+                </div>
+                <div class="flow-branch-col">
+                    <div class="branch-label">Individual</div>
+                    <div class="flow-node action" style="min-width:180px;">
+                        <div class="node-title" style="font-size:12px;">POST /api/{type}/{rg}/{name}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node process">
+                <span class="node-num">5</span>
+                <span class="node-title">Backend Mengirim Command ke Azure</span>
+                <div class="node-desc">Azure SDK &rarr; begin_start() / begin_deallocate() / begin_stop()</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node action">
+                <span class="node-num">6</span>
+                <span class="node-title">Auto-Polling Status</span>
+                <div class="node-desc">Frontend melakukan polling setiap 5 detik hingga status berubah</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node success">
+                <span class="node-num">7</span>
+                <span class="node-title">Status Updated</span>
+                <div class="node-desc">Running / Stopped / Starting / Stopping sesuai Azure Portal</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── CI/CD FLOW ─── -->
+    <div class="flow-section">
+        <h2>CI/CD Pipeline GitHub Actions</h2>
+        <div class="deploy-flow">
+            <div class="deploy-box">
+                <div class="step">1</div>
+                <div class="title">Push to Main</div>
+                <div class="desc">Git push trigger</div>
+            </div>
+            <div class="deploy-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="deploy-box">
+                <div class="step">2</div>
+                <div class="title">Build Image</div>
+                <div class="desc">docker build</div>
+            </div>
+            <div class="deploy-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="deploy-box">
+                <div class="step">3</div>
+                <div class="title">Push to Registry</div>
+                <div class="desc">Docker Hub (SHA)</div>
+            </div>
+            <div class="deploy-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="deploy-box">
+                <div class="step">4</div>
+                <div class="title">SSH to VM</div>
+                <div class="desc">Azure VM connect</div>
+            </div>
+            <div class="deploy-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="deploy-box">
+                <div class="step">5</div>
+                <div class="title">Pull &amp; Run</div>
+                <div class="desc">docker pull &amp; run</div>
+            </div>
+            <div class="deploy-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="deploy-box done">
+                <div class="step"><i class="fas fa-check"></i></div>
+                <div class="title">Deployed</div>
+                <div class="desc">Live on port 80</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── AUTH FLOW ─── -->
+    <div class="flow-section">
+        <h2>Authentication Managed Identity</h2>
+        <div class="flow-container">
+            <div class="flow-node start">
+                <span class="node-num">1</span>
+                <span class="node-title">Application Start (Docker on Azure VM)</span>
+                <div class="node-desc">DefaultAzureCredential() initialized</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node process">
+                <span class="node-num">2</span>
+                <span class="node-title">SDK Detects Azure VM Environment</span>
+                <div class="node-desc">Uses IMDS (Instance Metadata Service) endpoint</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node action">
+                <span class="node-num">3</span>
+                <span class="node-title">Request Access Token</span>
+                <div class="node-desc">System-Assigned Identity with Contributor role on target subscriptions</div>
+            </div>
+            <div class="flow-arrow"><div class="vline"></div></div>
+            <div class="flow-node success">
+                <span class="node-num">4</span>
+                <span class="node-title">Authenticated Zero Secrets</span>
+                <div class="node-desc">Token used for all Azure Resource Manager API calls</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── TECH STACK ─── -->
+    <div class="flow-section">
+        <h2>Tech Stack</h2>
+        <div class="tech-grid">
+            <div class="tech-card">
+                <div class="tech-icon" style="background:#ecfdf5; color:#10b981;"><i class="fab fa-python"></i></div>
+                <div class="tech-name">Python Flask</div>
+                <div class="tech-desc">Backend API Server</div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-icon" style="background:#e8f4fd; color:#0078d4;"><i class="fas fa-cloud"></i></div>
+                <div class="tech-name">Azure SDK</div>
+                <div class="tech-desc">Compute, Container, Web</div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-icon" style="background:#eff6ff; color:#3b82f6;"><i class="fab fa-docker"></i></div>
+                <div class="tech-name">Docker</div>
+                <div class="tech-desc">Container Deployment</div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-icon" style="background:#f3f0ff; color:#8b5cf6;"><i class="fab fa-github"></i></div>
+                <div class="tech-name">GitHub Actions</div>
+                <div class="tech-desc">CI/CD Pipeline</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">Azure Resource Manager Dashboard Internal Documentation 2026</div>
+</div>
+</body>
+</html>

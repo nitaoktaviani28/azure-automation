@@ -25,7 +25,7 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ─── AZURE AUTH ──────────────────────────────────────────────────
+#azure_auth
 credential = DefaultAzureCredential()
 
 
@@ -59,9 +59,9 @@ def extract_resource_group(resource_id: str) -> str:
     return match.group(1)
 
 
-# ─── LIST SUBSCRIPTIONS ─────────────────────────────────────────
+#list sub
 
-# Only show these subscriptions in the dashboard
+#sub berikut yang ditambahkan ke ALLOWED_SUBSCRIPTIONS agar bisa diakses oleh aplikasi ini.
 ALLOWED_SUBSCRIPTIONS = {
     "163c1284-7060-4c7f-822f-efc086bbf95e",  # VS Enterprise 2025 – Nita Oktaviani
     "c943efc2-430f-4c7c-a428-293d6fb2c352",  # Visual Studio Enterprise – Ian Paulus Sinambela MPN
@@ -87,7 +87,7 @@ def list_subscriptions():
         return jsonify({"error": str(e)}), 500
 
 
-# ─── LIST RESOURCES ──────────────────────────────────────────────
+#list all resources
 
 @app.route("/api/resources", methods=["GET"])
 def list_all_resources():
@@ -207,7 +207,7 @@ def get_app_services(sub_id: str) -> list[dict]:
         return []
 
 
-# ─── START / STOP INDIVIDUAL ─────────────────────────────────────
+#start/stop individual resources
 
 @app.route("/api/vm/<resource_group>/<name>/start", methods=["POST"])
 def start_vm(resource_group, name):
@@ -279,7 +279,7 @@ def stop_app_service(resource_group, name):
         return jsonify({"error": str(e)}), 500
 
 
-# ─── BULK OPERATIONS ─────────────────────────────────────────────
+#bulk operations
 
 @app.route("/api/all/start", methods=["POST"])
 def start_all():
@@ -359,7 +359,7 @@ def stop_all():
     return jsonify(results)
 
 
-# ─── BULK BY TYPE ─────────────────────────────────────────────────
+#bulk operations by type
 
 @app.route("/api/<resource_type>/start-all", methods=["POST"])
 def start_all_by_type(resource_type):
@@ -424,7 +424,7 @@ def _bulk_action(resource_type: str, action: str):
     return jsonify(results)
 
 
-# ─── SERVE FRONTEND ──────────────────────────────────────────────
+#serve static index.html for the frontend
 
 @app.route("/")
 def index():
